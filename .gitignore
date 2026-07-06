@@ -24,6 +24,18 @@ profile.cov
 go.work
 go.work.sum
 
+# Go mod cache
+/vendor/
+
+# Go
+*.swp
+*.swo
+*.out
+bin/
+dist/
+*.log
+.DS_Store
+
 # env file
 .env
 
