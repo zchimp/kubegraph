@@ -1,4 +1,3 @@
-```yaml
 # github
 name: Build Docker & Push Private Registry
 # 触发时机：main分支推送、tag打版本
@@ -43,4 +42,3 @@ jobs:
           # 开启构建缓存，加快重复构建速度
           cache-from: type=registry,reference=${{ secrets.DOCKER_REGISTRY }}/library/demo-app:buildcache
           cache-to: type=registry,reference=${{ secrets.DOCKER_REGISTRY }}/library/demo-app:buildcache,mode=max
-```
