@@ -55,6 +55,3 @@ jobs:
           # 镜像全称：仓库地址/项目名:标签
           tags: ${{ secrets.ACR_REGISTRY }}/zchimp/kubegraph:${{ env.TAG }},${{ secrets.ACR_REGISTRY }}/zchimp/kubegraph:latest
           push: true
-          # 开启构建缓存，加快重复构建速度
-          cache-from: type=registry,reference=${{ secrets.ACR_REGISTRY }}/zchimp/kubegraph:buildcache
-          cache-to: type=registry,reference=${{ secrets.ACR_REGISTRY }}/zchimp/kubegraph:buildcache,mode=max
