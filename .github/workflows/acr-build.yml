@@ -3,9 +3,15 @@ name: Build Docker & Push Private Registry
 # 触发时机：main分支推送、tag打版本
 on:
   push:
-    branches: [ dev ]
+    branches: [ main ]
     tags: [ 'v*' ]
-
+  # 手动触发配置，可自定义镜像tag
+  workflow_dispatch:
+    inputs:
+      custom_tag:
+        description: 自定义镜像Tag（手动构建时填写，不填默认使用commit短哈希）
+        required: false
+        default: ""
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -26,10 +32,20 @@ jobs:
           username: ${{ secrets.ACR_USER }}
           password: ${{ secrets.ACR_PWD }}
 
-      # 4. 自动生成镜像标签（commit短哈希）
+      # 4. 判断触发方式，生成对应镜像标签
       - name: Generate Image Tag
         id: meta
-        run: echo "TAG=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+        run: |
+          # 手动触发且输入了自定义tag，优先使用自定义值
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.custom_tag }}" ]]; then
+            echo "TAG=${{ github.event.inputs.custom_tag }}" >> $GITHUB_ENV
+          # git推送版本tag（v1.0.0）
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+          # 普通代码提交，使用git短commit哈希
+          else
+            echo "TAG=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          fi
 
       # 5. 构建并推送镜像
       - name: Build & Push Image
@@ -37,8 +53,8 @@ jobs:
         with:
           context: .
           # 镜像全称：仓库地址/项目名:标签
-          tags: ${{ secrets.DOCKER_REGISTRY }}/library/demo-app:${{ env.TAG }},${{ secrets.DOCKER_REGISTRY }}/library/demo-app:latest
+          tags: ${{ secrets.ACR_REGISTRY }}/zchimp/kubegraph:${{ env.TAG }},${{ secrets.ACR_REGISTRY }}/zchimp/kubegraph:latest
           push: true
           # 开启构建缓存，加快重复构建速度
-          cache-from: type=registry,reference=${{ secrets.DOCKER_REGISTRY }}/library/demo-app:buildcache
-          cache-to: type=registry,reference=${{ secrets.DOCKER_REGISTRY }}/library/demo-app:buildcache,mode=max
+          cache-from: type=registry,reference=${{ secrets.ACR_REGISTRY }}/zchimp/kubegraph:buildcache
+          cache-to: type=registry,reference=${{ secrets.ACR_REGISTRY }}/zchimp/kubegraph:buildcache,mode=max
