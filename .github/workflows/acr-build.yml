@@ -1,0 +1,46 @@
+```yaml
+# github
+name: Build Docker & Push Private Registry
+# 触发时机：main分支推送、tag打版本
+on:
+  push:
+    branches: [ dev ]
+    tags: [ 'v*' ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. 拉取代码
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. 配置Docker Buildx（加速构建、支持多架构）
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3. 登录私有镜像仓库
+      - name: Login Private Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USER }}
+          password: ${{ secrets.ACR_PWD }}
+
+      # 4. 自动生成镜像标签（commit短哈希）
+      - name: Generate Image Tag
+        id: meta
+        run: echo "TAG=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      # 5. 构建并推送镜像
+      - name: Build & Push Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          # 镜像全称：仓库地址/项目名:标签
+          tags: ${{ secrets.DOCKER_REGISTRY }}/library/demo-app:${{ env.TAG }},${{ secrets.DOCKER_REGISTRY }}/library/demo-app:latest
+          push: true
+          # 开启构建缓存，加快重复构建速度
+          cache-from: type=registry,reference=${{ secrets.DOCKER_REGISTRY }}/library/demo-app:buildcache
+          cache-to: type=registry,reference=${{ secrets.DOCKER_REGISTRY }}/library/demo-app:buildcache,mode=max
+```
