@@ -8,7 +8,10 @@ import (
 
 func main() {
 	// 创建服务器实例
-	srv := server.NewServer()
+	srv, err := server.NewServer()
+	if err != nil {
+		log.Fatalf("New Server failed: %v", err)
+	}
 
 	// 初始化服务器
 	srv.Init()

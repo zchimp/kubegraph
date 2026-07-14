@@ -18,7 +18,8 @@ spec:
       # =========镜像拉取凭证配置=========
       imagePullSecrets:
         - name: acr-secret
-      # =================================
+      # =========配置权限==========
+      serviceAccountName: kubegraph-sa
       containers:
       - name: kubegraph
         image: registry.cn-hangzhou.aliyuncs.com/zchimp/kubegraph:latest
@@ -38,10 +39,10 @@ spec:
             path: /healthz
             port: http
           initialDelaySeconds: 10
-          periodSeconds: 15
+          periodSeconds: 30
         readinessProbe:
           httpGet:
             path: /ready
             port: http
-          initialDelaySeconds: 5
-          periodSeconds: 10
+          initialDelaySeconds: 10
+          periodSeconds: 30

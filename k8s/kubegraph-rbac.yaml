@@ -1,0 +1,54 @@
+# 1. 独立ServiceAccount（不使用default）
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubegraph-sa
+  namespace: kubegraph
+---
+# 2. 集群只读角色
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubegraph-reader
+rules:
+# 用于程序自检权限 SelfSubjectAccessReview
+- apiGroups: ["authorization.k8s.io"]
+  resources: ["selfsubjectaccessreviews"]
+  verbs: ["create"]
+
+# ========== K8S 原生核心资源 ==========
+- apiGroups:
+  - ""
+  - "apps"
+  - "batch"
+  - "networking.k8s.io"
+  - "storage.k8s.io"
+  - "autoscaling"
+  - "policy"
+  - "rbac.authorization.k8s.io"
+  resources: ["*"]
+  verbs: ["get", "list", "watch"]
+
+# ========== Calico CRD 网络资源 ==========
+- apiGroups: ["crd.projectcalico.org"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch"]
+
+# 如果后续安装istio、argocd等，在这里追加对应apiGroups
+# - apiGroups: ["networking.istio.io"]
+#   resources: ["*"]
+#   verbs: ["get","list","watch"]
+---
+# 3. 角色绑定：授权sa拥有集群只读权限
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubegraph-reader-binding
+subjects:
+- kind: ServiceAccount
+  name: kubegraph-sa
+  namespace: kubegraph
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kubegraph-reader

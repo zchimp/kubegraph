@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -17,26 +18,41 @@ import (
 
 // Server 服务器结构体
 type Server struct {
-	config    *config.ServerConfig
-	engine    *gin.Engine
+	config *config.ServerConfig
+	engine *gin.Engine
+
+	// 健康检查服务
 	healthSvc *service.HealthService
 	healthHdl *handler.HealthHandler
+
+	// k8s资源服务（延迟初始化，http接口触发构建）
+	mu     sync.RWMutex
+	k8sSvc *service.Kubernetes
+	k8sHdl *handler.KubernetesHandler
 }
 
 // NewServer 创建新的服务器实例
-func NewServer() *Server {
+func NewServer() (*Server, error) {
 	cfg := config.NewServerConfig()
 	engine := gin.Default()
 
 	healthSvc := service.NewHealthService()
 	healthHdl := handler.NewHealthHandler()
+	k8sSvc, err := service.NewKubernetes("")
+	if err != nil {
+		log.Fatal("Init k8s service failed")
+		return nil, err
+	}
+	k8sHdl := handler.NewKubernetesHandler(k8sSvc)
 
 	return &Server{
 		config:    cfg,
 		engine:    engine,
 		healthSvc: healthSvc,
 		healthHdl: healthHdl,
-	}
+		k8sSvc:    k8sSvc,
+		k8sHdl:    k8sHdl,
+	}, nil
 }
 
 // Init 初始化服务器
@@ -48,8 +64,13 @@ func (s *Server) Init() {
 // registerRoutes 注册路由
 func (s *Server) registerRoutes() {
 	// 健康检查路由
-	s.engine.GET(s.config.HealthCheckPath, s.healthHdl.HealthCheck)
-	s.engine.GET(s.config.ReadyCheckPath, s.healthHdl.ReadinessCheck)
+	s.engine.GET(HealthCheckPath, s.healthHdl.HealthCheck)
+	s.engine.GET(ReadyCheckPath, s.healthHdl.ReadinessCheck)
+
+	s.engine.Group(APIV1Root).
+		GET(SubRoutePath.AllResources, func(c *gin.Context) {
+			s.k8sHdl.ListAllResources(c)
+		})
 }
 
 // Start 启动服务器
